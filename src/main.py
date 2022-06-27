@@ -9,18 +9,21 @@ Stretch Goals:
 """
 
 import json
+from time import sleep
 from numpy import average
 import requests
 from src import summoner_class
 from src import match_class
+from src.config.config import config
 
 def get_request(html: str) -> json:
+    api_key = config["api_key"]
     match_data = requests.get(f'{html}', 
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:101.0) Gecko/20100101 Firefox/101.0",
     "Accept-Language": "en-US,en;q=0.5",
     "Accept-Charset": "application/x-www-form-urlencoded; charset=UTF-8",
     "Origin": "https://developer.riotgames.com",
-    "X-Riot-Token": "RGAPI-492d7967-93de-4ce7-8578-df3565636867"})
+    "X-Riot-Token": f"{api_key}"})
     match_data = match_data.json()
     return match_data
 
@@ -30,13 +33,14 @@ def init_summoner(summoner: object) -> object:
     return summoner
 
 def request_matches(summoner: object) -> json:
-    matches = get_request('https://americas.api.riotgames.com/tft/match/v1/matches/by-puuid/dlxX-iUghrcm3LBX5L5jCbXlbhKYexi06u-jxUc9u_k56ecxloI2o8SQzPfFJdHwYm3qRmJ3gGJnXQ/ids?start=0&count=50')
+    matches = get_request(f'https://americas.api.riotgames.com/tft/match/v1/matches/by-puuid/{summoner.get_puuid()}/ids?start=0&count=50')
     return matches
 
 def init_match_list(matches: list) -> list:
     matches_ret = []
     for match in matches:
         match_data = get_request(f'https://americas.api.riotgames.com/tft/match/v1/matches/{match}'), 
+        sleep(0.2)
         info = match_data[0]["info"]
         if info["queue_id"] != 1100: # We only want data from ranked games
             continue
@@ -49,19 +53,11 @@ def init_match_list(matches: list) -> list:
             break
     return matches_ret
 
-def main():
+def init_summoner_and_matches() -> list:
     summoner = summoner_class.Summoner('lots of coffee')
     summoner = init_summoner(summoner)
-    
-    summoner.set_matches(request_matches(summoner))
-    
-    matches = init_match_list(summoner.get_matches())
-    
-    places = []
-    for m in matches:
-        places.append(m.get_place())
-    avg = average(places)
-    print(places, avg)
+    summoner.set_matches(init_match_list(request_matches(summoner)))
+    return summoner
 
-if __name__ == '__main__':
-    main()
+def refresh_matches(summoner: object) -> None:
+    summoner.set_matches(init_match_list(request_matches(summoner)))
