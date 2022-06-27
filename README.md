@@ -7,3 +7,4 @@ button that I can hit whenever.
 Stretch Goals:
 - This app will show the comp and units played
 - Not just me, enter username field
+- Make the UI look nicer
