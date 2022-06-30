@@ -12,8 +12,7 @@ import json
 from time import sleep
 from numpy import average
 import requests
-from src import summoner_class
-from src import match_class
+from src import common_database, summoner_class, match_class
 from src.config.config import config
 
 def get_request(html: str) -> json:
@@ -36,28 +35,40 @@ def request_matches(summoner: object) -> json:
     matches = get_request(f'https://americas.api.riotgames.com/tft/match/v1/matches/by-puuid/{summoner.get_puuid()}/ids?start=0&count=50')
     return matches
 
-def init_match_list(matches: list) -> list:
+def init_match_list(matches: list, summoner: object) -> list:
     matches_ret = []
+    db = common_database.Database()
+    puuid = summoner.get_puuid()
     for match in matches:
-        match_data = get_request(f'https://americas.api.riotgames.com/tft/match/v1/matches/{match}'), 
-        sleep(0.2)
-        info = match_data[0]["info"]
-        if info["queue_id"] != 1100: # We only want data from ranked games
-            continue
+        l = db.select(f"select * from dbo.Matches where match_id = '{match}' and puuid = '{puuid}'")
         match_obj = match_class.Match(f"{match}")
-        for part in info["participants"]:
-            if part["puuid"] == "dlxX-iUghrcm3LBX5L5jCbXlbhKYexi06u-jxUc9u_k56ecxloI2o8SQzPfFJdHwYm3qRmJ3gGJnXQ":
-                match_obj.set_place(part["placement"])
+        match_obj.set_puuid(puuid)        
+        if l != []:
+            match_obj.set_place(l[0][2])
+        else:
+            match_data = get_request(f'https://americas.api.riotgames.com/tft/match/v1/matches/{match}'), 
+            sleep(0.2)
+            info = match_data[0]["info"]
+            if info["queue_id"] != 1100: # We only want data from ranked games
+                continue
+            for part in info["participants"]:
+                if part["puuid"] == puuid:
+                    match_obj.set_place(part["placement"])
+                    break
+            place = match_obj.get_place()
+            db.insert(f"insert into dbo.Matches (match_id, puuid, placement) values('{match}','{puuid}',{place})")
+        
         matches_ret.append(match_obj)
         if len(matches_ret) == 10:
             break
+    db.close_connection()
     return matches_ret
 
 def init_summoner_and_matches() -> list:
     summoner = summoner_class.Summoner('lots of coffee')
     summoner = init_summoner(summoner)
-    summoner.set_matches(init_match_list(request_matches(summoner)))
+    summoner.set_matches(init_match_list(request_matches(summoner), summoner))
     return summoner
 
 def refresh_matches(summoner: object) -> None:
-    summoner.set_matches(init_match_list(request_matches(summoner)))
+    summoner.set_matches(init_match_list(request_matches(summoner), summoner))
