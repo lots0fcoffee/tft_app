@@ -14,15 +14,22 @@ from numpy import average
 import requests
 from src import common_database, summoner_class, match_class
 from src.config.config import config
+import logging
+
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 def get_request(html: str) -> json:
     api_key = config["api_key"]
-    match_data = requests.get(f'{html}', 
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:101.0) Gecko/20100101 Firefox/101.0",
-    "Accept-Language": "en-US,en;q=0.5",
-    "Accept-Charset": "application/x-www-form-urlencoded; charset=UTF-8",
-    "Origin": "https://developer.riotgames.com",
-    "X-Riot-Token": f"{api_key}"})
+    logging.info("Sending request to Riot's servers")
+    try:
+        match_data = requests.get(f'{html}', 
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:101.0) Gecko/20100101 Firefox/101.0",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Accept-Charset": "application/x-www-form-urlencoded; charset=UTF-8",
+        "Origin": "https://developer.riotgames.com",
+        "X-Riot-Token": f"{api_key}"})
+    except requests.exceptions.RequestException as e:
+        print("Error: Cannot connect to Riot's servers")
     match_data = match_data.json()
     return match_data
 
@@ -41,6 +48,8 @@ def init_match_list(matches: list, summoner: object) -> list:
     puuid = summoner.get_puuid()
     for match in matches:
         l = db.select(f"select * from dbo.Matches where match_id = '{match}' and puuid = '{puuid}'")
+        norms_check = db.select(f"select * from dbo.Normal_or_Double_Up where match_id = '{match}' and puuid = '{puuid}'")
+        if norms_check != []: continue
         match_obj = match_class.Match(f"{match}")
         match_obj.set_puuid(puuid)        
         if l != []:
@@ -49,13 +58,14 @@ def init_match_list(matches: list, summoner: object) -> list:
             match_data = get_request(f'https://americas.api.riotgames.com/tft/match/v1/matches/{match}'), 
             sleep(0.2)
             info = match_data[0]["info"]
-            if info["queue_id"] != 1100: # We only want data from ranked games
-                continue
             for part in info["participants"]:
                 if part["puuid"] == puuid:
                     match_obj.set_place(part["placement"])
                     break
-            place = match_obj.get_place()
+            place = match_obj.get_place()            
+            if info["queue_id"] != 1100: # We only want data from ranked games
+                db.insert(f"insert into dbo.Normal_or_Double_Up (match_id, puuid, placement) values('{match}','{puuid}',{place})")    
+                continue
             db.insert(f"insert into dbo.Matches (match_id, puuid, placement) values('{match}','{puuid}',{place})")
         
         matches_ret.append(match_obj)
