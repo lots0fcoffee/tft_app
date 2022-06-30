@@ -19,13 +19,3 @@ class Database:
 
     def close_connection(self) -> None:
         self.conn.close()
-
-def main():
-    db = Database()
-    db.connect_to_db()
-    l = db.query("select * from dbo.Summoners")
-    print(l)
-    db.close_connection()
-
-if __name__ == '__main__':
-    main()
