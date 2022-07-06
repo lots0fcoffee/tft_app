@@ -22,7 +22,7 @@ def get_request(html: str) -> json:
     api_key = config["api_key"]
     logging.info("Sending request to Riot's servers")
     try:
-        match_data = requests.get(f'{html}', 
+        riot_data = requests.get(f'{html}', 
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:101.0) Gecko/20100101 Firefox/101.0",
         "Accept-Language": "en-US,en;q=0.5",
         "Accept-Charset": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -30,7 +30,7 @@ def get_request(html: str) -> json:
         "X-Riot-Token": f"{api_key}"})
     except requests.exceptions.RequestException as e:
         logging.error("Error: Cannot connect to Riot's servers")
-    return match_data.json()
+    return riot_data.json()
 
 def init_summoner(summoner: object) -> object:
     summoner.set_puuid("dlxX-iUghrcm3LBX5L5jCbXlbhKYexi06u-jxUc9u_k56ecxloI2o8SQzPfFJdHwYm3qRmJ3gGJnXQ")
@@ -38,8 +38,7 @@ def init_summoner(summoner: object) -> object:
     return summoner
 
 def request_matches(summoner: object) -> json:
-    matches = get_request(f'https://americas.api.riotgames.com/tft/match/v1/matches/by-puuid/{summoner.get_puuid()}/ids?start=0&count=50')
-    return matches
+    return get_request(f'https://americas.api.riotgames.com/tft/match/v1/matches/by-puuid/{summoner.get_puuid()}/ids?start=0&count=50')
 
 def init_match_list(matches: list, summoner: object) -> list:
     matches_ret = []
@@ -65,8 +64,7 @@ def init_match_list(matches: list, summoner: object) -> list:
             if info["queue_id"] != 1100: # We only want data from ranked games
                 db.insert(f"insert into dbo.Normal_or_Double_Up (match_id, puuid, placement) values('{match}','{puuid}',{place})")    
                 continue
-            db.insert(f"insert into dbo.Matches (match_id, puuid, placement) values('{match}','{puuid}',{place})")
-        
+            db.insert(f"insert into dbo.Matches (match_id, puuid, placement) values('{match}','{puuid}',{place})")       
         matches_ret.append(match_obj)
         if len(matches_ret) == 10:
             break
