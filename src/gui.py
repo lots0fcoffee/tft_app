@@ -1,4 +1,3 @@
-from struct import pack
 from tkinter import *
 from src import main
 from numpy import average

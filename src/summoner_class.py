@@ -1,6 +1,3 @@
-from unicodedata import name
-
-
 class Summoner:
     def __init__(self, summoner_name: str) -> None:
         self.summoner_name = summoner_name
