@@ -29,9 +29,8 @@ def get_request(html: str) -> json:
         "Origin": "https://developer.riotgames.com",
         "X-Riot-Token": f"{api_key}"})
     except requests.exceptions.RequestException as e:
-        print("Error: Cannot connect to Riot's servers")
-    match_data = match_data.json()
-    return match_data
+        logging.error("Error: Cannot connect to Riot's servers")
+    return match_data.json()
 
 def init_summoner(summoner: object) -> object:
     summoner.set_puuid("dlxX-iUghrcm3LBX5L5jCbXlbhKYexi06u-jxUc9u_k56ecxloI2o8SQzPfFJdHwYm3qRmJ3gGJnXQ")
